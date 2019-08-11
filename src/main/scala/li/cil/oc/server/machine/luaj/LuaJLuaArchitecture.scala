@@ -14,8 +14,8 @@ import li.cil.oc.api.machine.LimitReachedException
 import li.cil.oc.server.machine.Machine
 import li.cil.oc.util.ScalaClosure
 import li.cil.oc.util.ScalaClosure._
-import li.cil.repack.org.luaj.vm2._
-import li.cil.repack.org.luaj.vm2.lib.jse.JsePlatform
+import org.luaj.vm2._
+import org.luaj.vm2.lib.jse.JsePlatform
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NBTTagCompound
 

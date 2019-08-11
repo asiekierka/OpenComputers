@@ -14,8 +14,8 @@ import li.cil.oc.api
 import li.cil.oc.api.machine.Architecture
 import li.cil.oc.server.machine.Machine
 import li.cil.oc.util.ExtendedLuaState._
-import li.cil.repack.com.naef.jnlua
-import li.cil.repack.com.naef.jnlua.NativeSupport.Loader
+import org.terasology.jnlua
+import org.terasology.jnlua.NativeSupport.Loader
 import net.minecraft.item.ItemStack
 import org.apache.commons.lang3.SystemUtils
 
@@ -55,9 +55,9 @@ object LuaStateFactory {
   }
 
   object Lua52 extends LuaStateFactory {
-    override def version: String = "lua52"
+    override def version: String = "5.2"
 
-    override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaState())(new jnlua.LuaState(_))
+    override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaState52())(new jnlua.LuaState52(_))
 
     override protected def openLibs(state: jnlua.LuaState): Unit = {
       state.openLib(jnlua.LuaState.Library.BASE)
@@ -73,9 +73,9 @@ object LuaStateFactory {
   }
 
   object Lua53 extends LuaStateFactory {
-    override def version: String = "lua53"
+    override def version: String = "5.3"
 
-    override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaStateFiveThree())(new jnlua.LuaStateFiveThree(_))
+    override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaState53())(new jnlua.LuaState53(_))
 
     override protected def openLibs(state: jnlua.LuaState): Unit = {
       state.openLib(jnlua.LuaState.Library.BASE)
@@ -111,24 +111,33 @@ abstract class LuaStateFactory {
 
   private var currentLib = ""
 
-  private val libraryName = {
-    if (!Strings.isNullOrEmpty(Settings.get.forceNativeLib)) Settings.get.forceNativeLib
-
-    else if (SystemUtils.IS_OS_FREE_BSD && Architecture.IS_OS_X64) "native.64.bsd.so"
-    else if (SystemUtils.IS_OS_FREE_BSD && Architecture.IS_OS_X86) "native.32.bsd.so"
-
-    else if (SystemUtils.IS_OS_LINUX && Architecture.IS_OS_ARM) "native.32.arm.so"
-    else if (SystemUtils.IS_OS_LINUX && Architecture.IS_OS_X64) "native.64.so"
-    else if (SystemUtils.IS_OS_LINUX && Architecture.IS_OS_X86) "native.32.so"
-
-    else if (SystemUtils.IS_OS_MAC && Architecture.IS_OS_X64) "native.64.dylib"
-    else if (SystemUtils.IS_OS_MAC && Architecture.IS_OS_X86) "native.32.dylib"
-
-    else if (SystemUtils.IS_OS_WINDOWS && Architecture.IS_OS_X64) "native.64.dll"
-    else if (SystemUtils.IS_OS_WINDOWS && Architecture.IS_OS_X86) "native.32.dll"
-
-    else null
+  private val libraryOS = {
+    if (SystemUtils.IS_OS_FREE_BSD) "freebsd"
+    else if (SystemUtils.IS_OS_LINUX) "linux"
+    else if (SystemUtils.IS_OS_WINDOWS) "windows"
+    else if (SystemUtils.IS_OS_MAC) "mac"
+    else "unknown"
   }
+
+  private val libraryOSDirName = {
+    if (SystemUtils.IS_OS_MAC_OSX) "macosx"
+    else libraryOS
+  }
+
+  private val libraryArch = {
+    if (Architecture.IS_OS_ARM) "arm32"
+    else if (Architecture.IS_OS_X64) "amd64"
+    else if (Architecture.IS_OS_X86) "i686"
+    else "unknown"
+  }
+
+  private val libraryExtension = {
+    if (SystemUtils.IS_OS_WINDOWS) "dll"
+    else if (SystemUtils.IS_OS_MAC) "dylib"
+    else "so"
+  }
+
+  private val libraryName = s"$libraryOS-$libraryArch.$libraryExtension"
 
   // Register a custom library loader with JNLua. We have to trigger
   // library loads through JNLua to ensure the LuaState class is the
@@ -138,7 +147,7 @@ abstract class LuaStateFactory {
   // initializer, because the native lib will not have been completely
   // loaded at the time the initializer runs.
   private def prepareLoad(lib: String): Unit = jnlua.NativeSupport.getInstance().setLoader(new Loader {
-    def load(): Unit = {
+    def load(c: Class[_]): Unit = {
       System.load(lib)
     }
   })
@@ -175,9 +184,16 @@ abstract class LuaStateFactory {
       }
     }
 
-    val libraryUrl = classOf[Machine].getResource(s"/assets/${Settings.resourceDomain}/lib/$version/$libraryName")
+    val libraryPath =
+      if (!Strings.isNullOrEmpty(Settings.get.forceNativeLib)) {
+        Settings.get.forceNativeLib
+      } else {
+        s"$libraryOSDirName/libjnlua-$version-$libraryName"
+      }
+
+    val libraryUrl = classOf[Machine].getResource(s"/assets/${Settings.resourceDomain}/lib/$libraryPath")
     if (libraryUrl == null) {
-      OpenComputers.log.warn(s"Native library with name '$version/$libraryName' not found.")
+      OpenComputers.log.warn(s"Native library with name '$libraryPath' not found.")
       return
     }
 
@@ -195,7 +211,7 @@ abstract class LuaStateFactory {
     if (!Settings.get.nativeInTmpDir) {
       val libDir = new File(tmpBasePath)
       if (libDir.isDirectory) {
-        for (file <- libDir.listFiles(new PatternFilenameFilter("^" + Pattern.quote("OpenComputersMod-") + ".*" + Pattern.quote("-" + libraryName) + "$"))) {
+        for (file <- libDir.listFiles(new PatternFilenameFilter("^" + Pattern.quote("OpenComputersMod-") + ".*" + Pattern.quote(s"-$version-$libraryName") + "$"))) {
           if (file.compareTo(tmpLibFile) != 0) {
             file.delete()
           }
@@ -395,8 +411,8 @@ abstract class LuaStateFactory {
       }
     }
     catch {
-      case _: UnsatisfiedLinkError =>
-        OpenComputers.log.error("Failed loading the native libraries.")
+      case e: UnsatisfiedLinkError =>
+        OpenComputers.log.error("Failed loading the native libraries.", e)
       case t: Throwable =>
         OpenComputers.log.warn("Failed creating Lua state.", t)
     }
