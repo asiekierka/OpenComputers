@@ -5,8 +5,8 @@ import li.cil.oc.api.machine.Value
 import li.cil.oc.server.driver.Registry
 import li.cil.oc.server.machine.ArgumentsImpl
 import li.cil.oc.util.ScalaClosure._
-import li.cil.repack.org.luaj.vm2.LuaValue
-import li.cil.repack.org.luaj.vm2.Varargs
+import org.luaj.vm2.LuaValue
+import org.luaj.vm2.Varargs
 
 import scala.collection.convert.WrapAsScala._
 

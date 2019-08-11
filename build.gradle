@@ -3,12 +3,16 @@ buildscript {
     repositories {
         jcenter()
         maven {
+            url = "https://plugins.gradle.org/m2/"
+        }
+        maven {
             name = "forge"
             url = "https://files.minecraftforge.net/maven"
         }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        classpath "com.github.jengelman.gradle.plugins:shadow:1.2.4"
     }
 }
 
@@ -19,6 +23,7 @@ plugins {
 apply plugin: 'scala'
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'maven-publish'
+apply plugin: "com.github.johnrengelman.shadow"
 
 sourceCompatibility = JavaVersion.VERSION_1_7
 targetCompatibility = JavaVersion.VERSION_1_7
@@ -69,14 +74,20 @@ minecraft {
 repositories {
     maven { url "https://maven.cil.li/" }
     maven { url "https://minecraft.curseforge.com/api/maven/" }
+    maven { url "http://artifactory.terasology.org/artifactory/virtual-repo-live" }
+    maven { url 'https://squiddev.cc/maven/' }
+    ivy { artifactPattern "http://asie.pl/javadeps/[module]-[revision](-[classifier]).[ext]" }
 }
 
 configurations {
-    embedded
-    compile.extendsFrom provided, embedded
+    shadow
+    compile.extendsFrom provided, shadow
 }
 
 dependencies {
+    shadow "org.terasology.jnlua:JNLua:0.1.0-SNAPSHOT"
+    shadow name: 'luaj-jse', version: '11b29f92'
+
     deobfCompile ("li.cil.tis3d:TIS-3D:MC1.12-${config.tis3d.version}") {
         exclude module: "jei_1.12"
     }
@@ -87,7 +98,7 @@ dependencies {
     }
     deobfCompile "net.industrial-craft:industrialcraft-2:${config.ic2.version}"
     deobfCompile "mcp.mobius.waila:Hwyla:${config.hwyla.version}:api"
-    deobfCompile "dan200.computercraft:ComputerCraft:${config.cc.version}"
+    deobfCompile "org.squiddev:cc-tweaked-1.12.2:${config.cc.version}" // official CC conflicts with LuaJ 3.x
     deobfCompile "charset:Charset:${config.charset.version}:api"
     
     provided ("appeng:appliedenergistics2:${config.ae2.version}:api") {
@@ -124,8 +135,6 @@ dependencies {
         exclude module: "ForgeMultipart"
     }
 
-    embedded files('libs/OpenComputers-JNLua.jar', 'libs/OpenComputers-LuaJ.jar')
-
     testCompile "org.mockito:mockito-all:1.10.19"
 
     provided "codechicken:EnderStorage:${config.minecraft.version}-${config.enderstorage.version}:universal"
@@ -160,18 +169,28 @@ allprojects {
     }
 }
 
+jar.dependsOn shadowJar
+jar.enabled = false
+
 jar {
-    configurations.embedded.each { dep ->
-        from(project.zipTree(dep)) {
-            exclude 'META-INF', 'META-INF/**'
-        }
-    }
     manifest {
         attributes FMLCorePlugin: "li.cil.oc.common.launch.TransformerLoader"
         attributes FMLCorePluginContainsFMLMod: "true"
         attributes FMLAT: "oc_at.cfg"
     }
 }
+
+shadowJar {
+    archiveName = tasks.jar.archiveName
+    configurations = [project.configurations.shadow]
+    relocate 'org.luaj.vm2', 'li.cil.oc.repack.org.luaj.vm2'
+}
+
+reobfJar {
+    setJar(tasks.shadowJar.archivePath)
+}
+
+reobfJar.dependsOn shadowJar
 
 javadoc {
     include 'li/cil/oc/api/**'
