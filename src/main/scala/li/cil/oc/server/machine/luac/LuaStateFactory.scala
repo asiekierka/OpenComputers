@@ -26,7 +26,8 @@ object LuaStateFactory {
     // Force initialization of both.
     val lua52 = Lua52.isAvailable
     val lua53 = Lua53.isAvailable
-    lua52 || lua53
+    val lua54 = Lua54.isAvailable
+    lua52 || lua53 || lua54
   }
 
   def luajRequested: Boolean = Settings.get.forceLuaJ || Settings.get.registerLuaJArchitecture
@@ -36,6 +37,8 @@ object LuaStateFactory {
   def include52: Boolean = Lua52.isAvailable && !Settings.get.forceLuaJ
 
   def include53: Boolean = Lua53.isAvailable && Settings.get.enableLua53 && !Settings.get.forceLuaJ
+
+  def include54: Boolean = Lua54.isAvailable && Settings.get.enableLua54
 
   def default53: Boolean = include53 && Settings.get.defaultLua53
 
@@ -74,6 +77,24 @@ object LuaStateFactory {
     override def version: String = "5.3"
 
     override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaState53())(new jnlua.LuaState53(_))
+
+    override protected def openLibs(state: jnlua.LuaState): Unit = {
+      state.openLib(jnlua.LuaState.Library.BASE)
+      state.openLib(jnlua.LuaState.Library.COROUTINE)
+      state.openLib(jnlua.LuaState.Library.DEBUG)
+      state.openLib(jnlua.LuaState.Library.ERIS)
+      state.openLib(jnlua.LuaState.Library.MATH)
+      state.openLib(jnlua.LuaState.Library.STRING)
+      state.openLib(jnlua.LuaState.Library.TABLE)
+      state.openLib(jnlua.LuaState.Library.UTF8)
+      state.pop(8)
+    }
+  }
+
+  object Lua54 extends LuaStateFactory {
+    override def version: String = "5.4"
+
+    override protected def create(maxMemory: Option[Int]) = maxMemory.fold(new jnlua.LuaState54())(new jnlua.LuaState54(_))
 
     override protected def openLibs(state: jnlua.LuaState): Unit = {
       state.openLib(jnlua.LuaState.Library.BASE)

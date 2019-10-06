@@ -85,7 +85,8 @@ configurations {
 }
 
 dependencies {
-    shadow "org.terasology.jnlua:JNLua:0.1.0-SNAPSHOT"
+    // shadow "org.terasology.jnlua:JNLua:0.1.0-SNAPSHOT"
+    shadow name: 'jnlua-staging', version: '20191006'
     shadow name: 'luaj-jse', version: '11b29f92'
 
     deobfCompile ("li.cil.tis3d:TIS-3D:MC1.12-${config.tis3d.version}") {

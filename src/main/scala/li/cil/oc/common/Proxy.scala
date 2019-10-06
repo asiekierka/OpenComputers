@@ -13,9 +13,7 @@ import li.cil.oc.common.item.traits.Delegate
 import li.cil.oc.common.recipe.Recipes
 import li.cil.oc.integration.Mods
 import li.cil.oc.server._
-import li.cil.oc.server.machine.luac.LuaStateFactory
-import li.cil.oc.server.machine.luac.NativeLua52Architecture
-import li.cil.oc.server.machine.luac.NativeLua53Architecture
+import li.cil.oc.server.machine.luac.{LuaStateFactory, NativeLua52Architecture, NativeLua53Architecture, NativeLua54Architecture}
 import li.cil.oc.server.machine.luaj.LuaJLuaArchitecture
 import net.minecraft.block.Block
 import net.minecraft.item.Item
@@ -27,7 +25,7 @@ import net.minecraftforge.fml.common.FMLLog
 import net.minecraftforge.fml.common.event._
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.fml.common.network.NetworkRegistry
-import net.minecraftforge.fml.common.registry.{EntityRegistry}
+import net.minecraftforge.fml.common.registry.EntityRegistry
 import net.minecraftforge.oredict.OreDictionary
 
 import scala.collection.convert.WrapAsScala._
@@ -82,6 +80,9 @@ class Proxy {
     }
     if (LuaStateFactory.include53) {
       api.Machine.add(classOf[NativeLua53Architecture])
+    }
+    if (LuaStateFactory.include54) {
+      api.Machine.add(classOf[NativeLua54Architecture])
     }
     if (LuaStateFactory.includeLuaJ) {
       api.Machine.add(classOf[LuaJLuaArchitecture])
