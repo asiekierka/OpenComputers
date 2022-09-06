@@ -80,9 +80,6 @@ object ExtendedLuaState {
           count = count + 1
       }
       // Bring table back to top (in case memo values were pushed).
-      lua.pushValue(tableIndex)
-      lua.pushString("n")
-      lua.pushInteger(count)
       lua.rawSet(-3)
     }
 
